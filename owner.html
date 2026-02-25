@@ -33,6 +33,15 @@
   .live-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:0.75rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+  /* SHUTDOWN OVERLAY */
+  .shutdown-overlay { position:fixed; inset:0; background:#090909; z-index:9000; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; }
+  .shutdown-overlay.active { display:flex; }
+  .sd-icon { font-size:5rem; margin-bottom:24px; animation:pulse 2s infinite; }
+  .sd-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(2.5rem,8vw,5rem); color:var(--red); letter-spacing:4px; margin-bottom:16px; line-height:1; }
+  .sd-msg { color:#666; font-size:1.05rem; max-width:440px; line-height:1.7; margin-bottom:32px; }
+  .sd-badge { display:inline-block; border:2px solid #3a0000; color:#cc3333; padding:10px 28px; border-radius:4px; font-weight:700; font-size:0.85rem; letter-spacing:2px; text-transform:uppercase; }
+
+
   /* LAYOUT */
   .page-body { display:grid; grid-template-columns:300px 1fr; min-height:calc(100vh - 73px); }
 
@@ -143,6 +152,14 @@
   </div>
 </div>
 
+<!-- SHUTDOWN OVERLAY -->
+<div class="shutdown-overlay" id="shutdownOverlay">
+  <div class="sd-icon">🔒</div>
+  <div class="sd-title">TEMPORARILY<br>CLOSED</div>
+  <p class="sd-msg" id="shutdownMsg">We're currently unavailable. Please check back soon.</p>
+  <div class="sd-badge">⚠️ Service Suspended</div>
+</div>
+
 <!-- NEW ORDER BANNER -->
 <div class="new-order-banner" id="newOrderBanner">
   <div class="nob-title">🔔 New Order!</div>
@@ -208,6 +225,7 @@
 <script>
 var API_KEY      = '$2a$10$VgEOzGTqUc4FOjCZulSrI.AE50EZQuuiTxtV9ONIyyFYOVTlBCjXK';
 var ORDERS_BIN   = '699db83cd0ea881f40d53452';
+var SHUTDOWN_BIN = '699db35843b1c97be999be52';
 var allOrders    = [];
 var attempts     = 0;
 var locked       = false;
@@ -283,6 +301,8 @@ if (sessionStorage.getItem('ctOwnerAuth') === '1') {
 }
 
 function startApp() {
+  checkShutdown();
+  setInterval(checkShutdown, 5000);
   loadOrders();
   setInterval(loadOrders, 8000);
   document.getElementById('refreshBtn').addEventListener('click', loadOrders);
@@ -294,6 +314,19 @@ function startApp() {
 }
 
 // ORDERS
+async function checkShutdown() {
+  try {
+    var res  = await fetch('https://api.jsonbin.io/v3/b/' + SHUTDOWN_BIN + '/latest', { headers: {'X-Master-Key': API_KEY, 'X-Access-Key': API_KEY} });
+    var data = await res.json();
+    var isDown = !!(data.record && data.record.shutdown);
+    document.getElementById('shutdownOverlay').classList.toggle('active', isDown);
+    var msgEl = document.getElementById('shutdownMsg');
+    msgEl.textContent = (isDown && data.record.reason && data.record.reason.trim())
+      ? data.record.reason
+      : "We're currently unavailable. Please check back soon.";
+  } catch(e) {}
+}
+
 function switchTab(tab) {
   document.getElementById('panelOrders').className = 'tab-panel' + (tab==='orders' ? ' active' : '');
   document.getElementById('panelSales').className  = 'tab-panel' + (tab==='sales'  ? ' active' : '');
@@ -409,3 +442,4 @@ async function updateStatus(index, newStatus) {
 </script>
 </body>
 </html>
+
