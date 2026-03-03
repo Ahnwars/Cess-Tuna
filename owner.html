@@ -265,11 +265,6 @@ var dateFilter   = 'all';
 var _p = [64,75,68,89,90,69,88,94,24,25,30];
 function getPassword(){ return _p.map(function(c){ return String.fromCharCode(c^42); }).join(''); }
 
-document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
-document.addEventListener('keydown', function(e){
-  if (e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C'].includes(e.key))||(e.ctrlKey&&e.key==='u'))
-    e.preventDefault();
-});
 
 function playAlert(){
   if (!soundOn) return;
@@ -477,3 +472,4 @@ async function loadChart(){
 </script>
 </body>
 </html>
+
