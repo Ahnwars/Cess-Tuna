@@ -355,6 +355,46 @@
   }
 })();
 
+
+// ── ANTI-INSPECT ─────────────────────────────────────────────────────────────
+(function(){
+  // Block right click
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  // Block keyboard shortcuts
+  document.addEventListener('keydown', function(e){
+    if (e.key==='F12') { e.preventDefault(); return false; }
+    if (e.ctrlKey && e.shiftKey && ['I','J','C','K','U'].includes(e.key)) { e.preventDefault(); return false; }
+    if (e.ctrlKey && e.key==='u') { e.preventDefault(); return false; }
+    if (e.ctrlKey && e.key==='s') { e.preventDefault(); return false; }
+    if (e.ctrlKey && e.key==='a') { e.preventDefault(); return false; }
+  });
+
+  // Debugger trap - slows devtools to a crawl
+  function devtoolsLoop(){
+    var start = new Date();
+    debugger;
+    if (new Date() - start > 100) {
+      document.body.innerHTML = '<div style="position:fixed;inset:0;background:#090909;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;"><h1 style="font-family:sans-serif;color:#E8272B;font-size:3rem;">⛔</h1><p style="color:#555;font-family:sans-serif;">Access denied.</p></div>';
+    }
+  }
+  setInterval(devtoolsLoop, 1000);
+
+  // Detect devtools via window size
+  var threshold = 160;
+  setInterval(function(){
+    if ((window.outerWidth - window.innerWidth > threshold) || (window.outerHeight - window.innerHeight > threshold)) {
+      document.body.innerHTML = '<div style="position:fixed;inset:0;background:#090909;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;"><h1 style="font-family:sans-serif;color:#E8272B;font-size:3rem;">⛔</h1><p style="color:#555;font-family:sans-serif;">Access denied.</p></div>';
+    }
+  }, 1000);
+
+  // Disable text selection
+  document.addEventListener('selectstart', function(e){ e.preventDefault(); });
+
+  // Disable drag
+  document.addEventListener('dragstart', function(e){ e.preventDefault(); });
+})();
+
 // ── CONFIG ───────────────────────────────────────────────────────────────────
 var API_KEY      = '$2a$10$VgEOzGTqUc4FOjCZulSrI.AE50EZQuuiTxtV9ONIyyFYOVTlBCjXK';
 var SHUTDOWN_BIN = '699db35843b1c97be999be52';
@@ -381,113 +421,6 @@ var dateFilter   = 'all';
 var _p = [64,75,68,89,90,69,88,94,27,24,25,30];
 function getPassword(){ return _p.map(function(c){ return String.fromCharCode(c^42); }).join(''); }
 
-// Block devtools
-document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
-document.addEventListener('keydown', function(e){
-  if (e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C'].includes(e.key))||(e.ctrlKey&&e.key==='u'))
-    e.preventDefault();
-});
-
-// Sound
-function playAlert(){
-  if (!soundOn) return;
-  try {
-    var ctx=new(window.AudioContext||window.webkitAudioContext)();
-    [523,659,784].forEach(function(freq,i){
-      var o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.frequency.value=freq;o.type='sine';
-      g.gain.setValueAtTime(.3,ctx.currentTime+i*.15);
-      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.15+.3);
-      o.start(ctx.currentTime+i*.15);o.stop(ctx.currentTime+i*.15+.3);
-    });
-  } catch(e){}
-}
-
-function showBanner(id){
-  document.getElementById('newOrderText').textContent='New order '+id+' just came in!';
-  var b=document.getElementById('newOrderBanner');
-  b.classList.add('show');
-  setTimeout(function(){ b.classList.remove('show'); },5000);
-}
-
-// ── LOGIN ─────────────────────────────────────────────────────────────────────
-function doLogin(){
-  if (locked) return;
-  var entered = document.getElementById('loginInput').value;
-  if (entered === getPassword()){
-    document.getElementById('loginScreen').classList.add('hidden');
-    sessionStorage.setItem('ctAdminAuth','1');
-    startApp();
-  } else {
-    attempts++;
-    var errEl = document.getElementById('loginError');
-    errEl.style.display = 'block';
-    document.getElementById('loginInput').value = '';
-    if (attempts >= 5){
-      locked = true;
-      document.getElementById('loginInput').disabled = true;
-      document.getElementById('loginBtn').disabled = true;
-      document.getElementById('loginAttempts').textContent = 'Too many attempts. Refresh to try again.';
-      errEl.textContent = '🔒 Locked out.';
-    } else {
-      document.getElementById('loginAttempts').textContent = (5-attempts)+' attempts remaining.';
-    }
-  }
-}
-
-document.getElementById('loginBtn').addEventListener('click', doLogin);
-document.getElementById('loginInput').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
-
-if (sessionStorage.getItem('ctAdminAuth')==='1'){
-  document.getElementById('loginScreen').classList.add('hidden');
-  startApp();
-}
-
-// ── APP ───────────────────────────────────────────────────────────────────────
-function startApp(){
-  fetchState(); loadOrders(); loadSettings();
-  setInterval(fetchState, 5000);
-  setInterval(loadOrders, 8000);
-  setInterval(checkAutoHours, 60000);
-
-  document.getElementById('bigSwitch').addEventListener('click', handleSwitch);
-  document.getElementById('confirmYes').addEventListener('click', confirmShutdown);
-  document.getElementById('confirmNo').addEventListener('click', cancelShutdown);
-  document.getElementById('clearBtn').addEventListener('click', clearOrders);
-  document.getElementById('refreshBtn').addEventListener('click', loadOrders);
-  document.getElementById('hoursSave').addEventListener('click', saveHours);
-  document.getElementById('soundToggle').addEventListener('click', function(){
-    soundOn=!soundOn;
-    this.textContent=soundOn?'ON':'OFF';
-    this.className=soundOn?'sound-toggle':'sound-toggle off';
-  });
-  document.getElementById('announceSave').addEventListener('click', function(){
-    var msg=document.getElementById('announceInput').value.trim();
-    saveSetting('announcement', msg);
-    alert(msg?'📢 Announcement published!':'Announcement cleared!');
-  });
-  document.getElementById('announceClear').addEventListener('click', function(){
-    document.getElementById('announceInput').value='';
-    saveSetting('announcement','');
-  });
-}
-
-// ── TABS ──────────────────────────────────────────────────────────────────────
-function switchTab(tab){
-  ['orders','sales','chart'].forEach(function(t){
-    document.getElementById('panel'+cap(t)).className='tab-panel'+(tab===t?' active':'');
-    document.getElementById('tab'+cap(t)).className='tab'+(tab===t?' active':'');
-  });
-  if (tab==='sales') loadSalesTable();
-  if (tab==='chart') loadChart();
-}
-function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-
-// ── SETTINGS (announcement, hours, stock) ─────────────────────────────────────
-async function loadSettings(){
-  try {
-    var res=await fetch('https://api.jsonbin.io/v3/b/'+SHUTDOWN_BIN+'/latest',{headers:{'X-Master-Key':API_KEY,'X-Access-Key':API_KEY}});
     var d=await res.json(); var r=d.record||{};
     if (r.announcement) document.getElementById('announceInput').value=r.announcement;
     if (r.openTime)  document.getElementById('hoursOpen').value=r.openTime;
